@@ -1,0 +1,51 @@
+module {
+  func.func @small_conv_network(%arg0: tensor<1x28x28x1xf32>) -> tensor<1x10xf32> {
+    // 첫 번째 합성곱 레이어
+    %weights1 = "tosa.const"() {value = dense<...> : tensor<16x3x3x1xf32>} : () -> tensor<16x3x3x1xf32>
+    %bias1 = "tosa.const"() {value = dense<...> : tensor<16xf32>} : () -> tensor<16xf32>
+    
+    // 패딩 추가 (same 패딩)
+    %padded1 = "tosa.pad"(%arg0, %pad_const) {padding = [[0, 0], [1, 1], [1, 1], [0, 0]]} : (tensor<1x28x28x1xf32>, tensor<4x2xi32>) -> tensor<1x30x30x1xf32>
+    
+    // 첫 번째 합성곱 연산
+    %conv1 = "tosa.conv2d"(%padded1, %weights1, %bias1) {dilation = [1, 1], pad = [0, 0, 0, 0], stride = [1, 1]} : (tensor<1x30x30x1xf32>, tensor<16x3x3x1xf32>, tensor<16xf32>) -> tensor<1x28x28x16xf32>
+    
+    // ReLU 활성화 함수
+    %zero = "tosa.const"() {value = dense<0.0> : tensor<f32>} : () -> tensor<f32>
+    %relu1 = "tosa.maximum"(%conv1, %zero) : (tensor<1x28x28x16xf32>, tensor<f32>) -> tensor<1x28x28x16xf32>
+    
+    // 최대 풀링 연산
+    %pool1 = "tosa.max_pool2d"(%relu1) {kernel = [2, 2], pad = [0, 0, 0, 0], stride = [2, 2]} : (tensor<1x28x28x16xf32>) -> tensor<1x14x14x16xf32>
+    
+    // 두 번째 합성곱 레이어
+    %weights2 = "tosa.const"() {value = dense<...> : tensor<32x3x3x16xf32>} : () -> tensor<32x3x3x16xf32>
+    %bias2 = "tosa.const"() {value = dense<...> : tensor<32xf32>} : () -> tensor<32xf32>
+    
+    // 패딩 추가 (same 패딩)
+    %padded2 = "tosa.pad"(%pool1, %pad_const) {padding = [[0, 0], [1, 1], [1, 1], [0, 0]]} : (tensor<1x14x14x16xf32>, tensor<4x2xi32>) -> tensor<1x16x16x16xf32>
+    
+    // 두 번째 합성곱 연산
+    %conv2 = "tosa.conv2d"(%padded2, %weights2, %bias2) {dilation = [1, 1], pad = [0, 0, 0, 0], stride = [1, 1]} : (tensor<1x16x16x16xf32>, tensor<32x3x3x16xf32>, tensor<32xf32>) -> tensor<1x14x14x32xf32>
+    
+    // ReLU 활성화 함수
+    %relu2 = "tosa.maximum"(%conv2, %zero) : (tensor<1x14x14x32xf32>, tensor<f32>) -> tensor<1x14x14x32xf32>
+    
+    // 전역 평균 풀링으로 특징 압축
+    %avgpool = "tosa.avg_pool2d"(%relu2) {kernel = [14, 14], pad = [0, 0, 0, 0], stride = [1, 1]} : (tensor<1x14x14x32xf32>) -> tensor<1x1x1x32xf32>
+    
+    // 텐서 재구성
+    %reshape = "tosa.reshape"(%avgpool) {new_shape = [1, 32]} : (tensor<1x1x1x32xf32>) -> tensor<1x32xf32>
+    
+    // 완전 연결 레이어
+    %fc_weights = "tosa.const"() {value = dense<...> : tensor<10x32xf32>} : () -> tensor<10x32xf32>
+    %fc_bias = "tosa.const"() {value = dense<...> : tensor<10xf32>} : () -> tensor<10xf32>
+    
+    // 행렬 곱셈 (fully connected)
+    %fc = "tosa.fully_connected"(%reshape, %fc_weights, %fc_bias) : (tensor<1x32xf32>, tensor<10x32xf32>, tensor<10xf32>) -> tensor<1x10xf32>
+    
+    // 소프트맥스 활성화
+    %output = "tosa.softmax"(%fc) : (tensor<1x10xf32>) -> tensor<1x10xf32>
+    
+    return %output : tensor<1x10xf32>
+  }
+}

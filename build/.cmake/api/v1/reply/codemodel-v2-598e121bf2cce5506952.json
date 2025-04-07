@@ -1,0 +1,159 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-f5ebdc15457944623624.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.13.4"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "TOSAAnalyzer",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2,
+						3,
+						4,
+						5,
+						6,
+						7,
+						8,
+						9,
+						10,
+						11
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "AArch64TargetParserTableGen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-AArch64TargetParserTableGen-Debug-54b939bb6633afa2cdf9.json",
+					"name" : "AArch64TargetParserTableGen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "ARMTargetParserTableGen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-ARMTargetParserTableGen-Debug-cb1fd8bc2aeedb11f66e.json",
+					"name" : "ARMTargetParserTableGen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "RISCVTargetParserTableGen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-RISCVTargetParserTableGen-Debug-862f46255a4efaca8e18.json",
+					"name" : "RISCVTargetParserTableGen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "TOSAAnalyzer::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-TOSAAnalyzer-Debug-3b75b168a43989793b78.json",
+					"name" : "TOSAAnalyzer",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "acc_gen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-acc_gen-Debug-5ac8727b6826ea4c417c.json",
+					"name" : "acc_gen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "intrinsics_gen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-intrinsics_gen-Debug-4c640e31c6ff21f8076f.json",
+					"name" : "intrinsics_gen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "mlir-doc::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-mlir-doc-Debug-9304f02d8cbf0a6a81d9.json",
+					"name" : "mlir-doc",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "mlir-generic-headers::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-mlir-generic-headers-Debug-31c594a2adad2c29bfcb.json",
+					"name" : "mlir-generic-headers",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "mlir-headers::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-mlir-headers-Debug-9c0fd7eb0eb14da0fb55.json",
+					"name" : "mlir-headers",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "mlir-tablegen-targets::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-mlir-tablegen-targets-Debug-41631bc841df19f464c2.json",
+					"name" : "mlir-tablegen-targets",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "omp_gen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-omp_gen-Debug-89bae531e80519936255.json",
+					"name" : "omp_gen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "vt_gen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-vt_gen-Debug-dfa45ce333303cff237e.json",
+					"name" : "vt_gen",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/swote/tosa-analyzer/build",
+		"source" : "/home/swote/tosa-analyzer"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

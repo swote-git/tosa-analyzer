@@ -1,0 +1,14 @@
+/home/swote/tosa-analyzer/build/CMakeFiles/intrinsics_gen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/vt_gen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/omp_gen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/acc_gen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/ARMTargetParserTableGen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/AArch64TargetParserTableGen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/mlir-tablegen-targets.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/mlir-headers.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/mlir-generic-headers.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/mlir-doc.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/TOSAAnalyzer.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/edit_cache.dir
+/home/swote/tosa-analyzer/build/CMakeFiles/rebuild_cache.dir

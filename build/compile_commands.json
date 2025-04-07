@@ -1,0 +1,20 @@
+[
+{
+  "directory": "/home/swote/tosa-analyzer/build",
+  "command": "clang++ -I/home/swote/llvm-project/llvm/include -I/home/swote/llvm-project/build/include -I/home/swote/llvm-project/mlir/include -I/home/swote/llvm-project/build/tools/mlir/include -I/home/swote/tosa-analyzer/include -g -std=gnu++17   -D_GNU_SOURCE -D_DEBUG -D_GLIBCXX_ASSERTIONS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -o CMakeFiles/TOSAAnalyzer.dir/src/tensorGraph.cpp.o -c /home/swote/tosa-analyzer/src/tensorGraph.cpp",
+  "file": "/home/swote/tosa-analyzer/src/tensorGraph.cpp",
+  "output": "CMakeFiles/TOSAAnalyzer.dir/src/tensorGraph.cpp.o"
+},
+{
+  "directory": "/home/swote/tosa-analyzer/build",
+  "command": "clang++ -I/home/swote/llvm-project/llvm/include -I/home/swote/llvm-project/build/include -I/home/swote/llvm-project/mlir/include -I/home/swote/llvm-project/build/tools/mlir/include -I/home/swote/tosa-analyzer/include -g -std=gnu++17   -D_GNU_SOURCE -D_DEBUG -D_GLIBCXX_ASSERTIONS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -o CMakeFiles/TOSAAnalyzer.dir/src/tensorLiveness.cpp.o -c /home/swote/tosa-analyzer/src/tensorLiveness.cpp",
+  "file": "/home/swote/tosa-analyzer/src/tensorLiveness.cpp",
+  "output": "CMakeFiles/TOSAAnalyzer.dir/src/tensorLiveness.cpp.o"
+},
+{
+  "directory": "/home/swote/tosa-analyzer/build",
+  "command": "clang++ -I/home/swote/llvm-project/llvm/include -I/home/swote/llvm-project/build/include -I/home/swote/llvm-project/mlir/include -I/home/swote/llvm-project/build/tools/mlir/include -I/home/swote/tosa-analyzer/include -g -std=gnu++17   -D_GNU_SOURCE -D_DEBUG -D_GLIBCXX_ASSERTIONS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS -o CMakeFiles/TOSAAnalyzer.dir/src/tosaParser.cpp.o -c /home/swote/tosa-analyzer/src/tosaParser.cpp",
+  "file": "/home/swote/tosa-analyzer/src/tosaParser.cpp",
+  "output": "CMakeFiles/TOSAAnalyzer.dir/src/tosaParser.cpp.o"
+}
+]
