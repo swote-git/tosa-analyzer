@@ -1,7 +1,8 @@
 #pragma once
 #include "TensorNode.h"
+#include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 
-    
 // 전체 데이터 흐름 그래프
 class TensorGraph {
 public:
@@ -13,9 +14,8 @@ public:
     std::vector<TensorNode*> nodes;
     
     // Value를 정의하는 노드를 빠르게 찾기 위한 맵
-    std::unordered_map<mlir::Value, TensorNode*> definingNodes;
-    
+    llvm::DenseMap<mlir::Value, TensorNode*> definingNodes;
     // Value를 사용하는 노드들을 빠르게 찾기 위한 맵
-    std::unordered_map<mlir::Value, std::vector<TensorNode*>> userNodes;
+    llvm::DenseMap<mlir::Value, std::vector<TensorNode*>> userNodes;
 };
     

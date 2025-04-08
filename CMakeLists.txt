@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.13.4)
-project(TOSAAnalyzer)
+project(TosaAnalyzer)
 
 # C++ 표준 설정
 set(CMAKE_CXX_STANDARD 17)
@@ -13,11 +13,6 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(LLVM_DIR $ENV{HOME}/llvm-project/build/lib/cmake/llvm)
 set(MLIR_DIR $ENV{HOME}/llvm-project/build/lib/cmake/mlir)
 
-# 명시적으로 라이브러리 경로 추가
-link_directories(
-    $ENV{HOME}/llvm-project/build/lib
-)
-
 # LLVM 패키지 찾기
 find_package(LLVM REQUIRED CONFIG)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -26,9 +21,6 @@ message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 # MLIR 패키지 찾기
 find_package(MLIR REQUIRED CONFIG)
 message(STATUS "Found MLIR in: ${MLIR_DIR}")
-
-# LLVM 컴포넌트 추가
-llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 # LLVM/MLIR 헤더 포함 경로 추가
 include_directories(
@@ -45,23 +37,22 @@ add_definitions(${MLIR_DEFINITIONS})
 file(GLOB SOURCES "src/*.cpp")
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-# MLIR 라이브러리 목록 가져오기
-get_property(mlir_libs GLOBAL PROPERTY MLIR_ALL_LIBS)
+# 필요한 LLVM 컴포넌트만 명시적으로 선택
+llvm_map_components_to_libnames(llvm_libs support core irreader)
 
-# 라이브러리 링크 (자동 방식)
-target_link_libraries(${PROJECT_NAME}
-    ${llvm_libs}
-    ${mlir_libs}
+# 필요한 MLIR 라이브러리만 명시적으로 선택
+set(MLIR_LIBS
+    MLIRAnalysis
+    MLIRIR
+    MLIRParser
+    MLIRPass
+    MLIRSupport
+    MLIRTosa
+    MLIRFuncDialect
 )
 
-# 대안: 수동으로 라이브러리 지정 (위의 자동 방식이 실패할 경우 이 부분을 사용)
-# target_link_libraries(${PROJECT_NAME}
-#    ${llvm_libs}
-#    MLIRAnalysis
-#    MLIRDialect
-#    MLIRIR
-#    MLIRParser
-#    MLIRPass
-#    MLIRSupport
-#    MLIRTransforms
-# )
+# 라이브러리 링크 (명시적 방식)
+target_link_libraries(${PROJECT_NAME}
+    ${llvm_libs}
+    ${MLIR_LIBS}
+)
