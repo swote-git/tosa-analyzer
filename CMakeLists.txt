@@ -47,7 +47,7 @@ set(MLIR_LIBS
     MLIRParser
     MLIRPass
     MLIRSupport
-    MLIRTosa
+    ${CMAKE_HOME_DIRECTORY}/../llvm-project/build/lib/libMLIRTosaDialect.a 
     MLIRFuncDialect
 )
 

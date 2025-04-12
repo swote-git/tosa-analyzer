@@ -3,6 +3,7 @@
 
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/Value.h"
+#include "mlir/IR/BuiltinAttributes.h"
 #include <string>
 #include <vector>
 

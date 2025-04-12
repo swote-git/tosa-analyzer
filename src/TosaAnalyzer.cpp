@@ -1,25 +1,107 @@
 #include "TosaAnalyzer.h"
+#include "LivenessAnalysis.h"
+#include "llvm/Support/raw_ostream.h"
+#include "mlir/Parser/Parser.h"
+#include "mlir/Support/FileUtilities.h"
+#include "mlir/Dialect/Tosa/IR/TosaOps.h"
+#include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/CommandLine.h"
+#include "llvm/Support/InitLLVM.h"
+#include "TensorNode.h"
 
-// MLIR 모듈에서 데이터 흐름 그래프 구성
-TensorGraph* buildTensorGraph(mlir::ModuleOp moduleOp) {
+// constructor
+TosaAnalyzer::TosaAnalyzer() : graph(nullptr), livenessAnalysis(nullptr) {
+    // register dialect
+    context.loadDialect<mlir::tosa::TosaDialect>();
+    context.loadDialect<mlir::func::FuncDialect>();
+}
+
+// Destructor
+TosaAnalyzer::~TosaAnalyzer() {
+    if (graph)
+        delete graph;
+    if (livenessAnalysis) 
+        delete livenessAnalysis;
+}
+
+// parse input from command line
+bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
+    // LLVM initialization
+    llvm::InitLLVM initLLVM(argc, argv);
+    
+    // command line options
+    llvm::cl::opt<std::string> input(
+        "input",
+        llvm::cl::desc("Input MLIR file"),
+        llvm::cl::Required);
+    
+    llvm::cl::opt<std::string> output(
+        "output-dot",
+        llvm::cl::desc("Output DOT file for graph visualization"),
+        llvm::cl::init("tensorGrpah.dot"));
+    
+    llvm::cl::ParseCommandLineOptions(argc, argv, "MLIR TOSA Model Liveness Analyzer\n");
+
+    // store file values
+    inputFileName = input;
+    outputFileName = output;
+
+    return true;
+}
+
+// load and parse input file
+bool TosaAnalyzer::loadAndParseInputFile() {
+    // loading source file
+    std::string errorMessage;
+    auto file = mlir::openInputFile(inputFileName, &errorMessage);
+    
+    if (!file) {
+        llvm::errs() << errorMessage << "\n";
+        return 1;
+    }
+    
+    // set up for source manager
+    llvm::SourceMgr sourceMgr;
+    sourceMgr.AddNewSourceBuffer(std::move(file), llvm::SMLoc());
+    
+    // parse MLIR
+    mlir::OwningOpRef<mlir::Operation*> moduleRef = 
+        mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
+    if (!moduleRef) {
+        llvm::errs() << "Error parsing input file\n";
+        return 1;
+    }
+    
+    mlir::ModuleOp module = mlir::cast<mlir::ModuleOp>(moduleRef.get());
+    
+    // prints MLIR info
+    llvm::outs() << "Parsed MLIR Module:\n";
+    module.dump();
+
+    return true;
+}
+
+// Bulid TensorGraph from MLIR module
+TensorGraph* TosaAnalyzer::buildTensorGraph() {
     TensorGraph* graph = new TensorGraph();
     
-    // 모든 함수를 탐색
-    moduleOp.walk([&](mlir::func::FuncOp funcOp) {
-        // 함수 내의 모든 연산 탐색하여 노드 생성
+    // searching all functions
+    module.walk([&](mlir::func::FuncOp funcOp) {
+        // find all operation in function
         funcOp.walk([&](mlir::Operation* op) {
-            // TOSA 연산인지 확인
+            // checking operation
             if (op->getDialect() && op->getDialect()->getNamespace() == "tosa") {
-                // 노드 생성 및 그래프에 추가
+                // create node and add to graph
                 TensorNode* node = new TensorNode(op);
                 graph->nodes.push_back(node);
                 
-                // 출력값에 대해 정의 노드 맵 업데이트
+                // update define node map
                 for (auto result : op->getResults()) {
                     graph->definingNodes[result] = node;
                 }
                 
-                // 입력값에 대해 사용자 노드 맵 업데이트
+                // update usage node map
                 for (auto operand : op->getOperands()) {
                     graph->userNodes[operand].push_back(node);
                 }
@@ -30,8 +112,8 @@ TensorGraph* buildTensorGraph(mlir::ModuleOp moduleOp) {
     return graph;
 }
 
-// DOT 형식으로 그래프 출력 (Graphviz 시각화용)
-void exportGraphToDot(TensorGraph* graph, llvm::StringRef filename) {
+// Export grpah to DOT format for visualization
+void TosaAnalyzer::exportGraphToDot(const std::string& filename) {
     std::error_code EC;
     llvm::raw_fd_ostream dotFile(filename, EC);
     
@@ -40,17 +122,17 @@ void exportGraphToDot(TensorGraph* graph, llvm::StringRef filename) {
         return;
     }
     
-    // DOT 파일 헤더 작성
+    // DOT file Header
     dotFile << "digraph TensorGraph {\n";
     dotFile << "  node [shape=box];\n";
     
-    // 노드 정의
+    // define nodes
     for (auto node : graph->nodes) {
         dotFile << "  \"" << node->id << "\" [label=\"" 
                 << node->operation->getName().getStringRef().str() << "\"];\n";
     }
     
-    // 에지 정의
+    // define edges
     for (auto node : graph->nodes) {
         for (auto output : node->outputs) {
             auto usersIt = graph->userNodes.find(output);
@@ -70,75 +152,49 @@ void exportGraphToDot(TensorGraph* graph, llvm::StringRef filename) {
     llvm::outs() << "Graph exported to " << filename << "\n";
 }
 
-int main(int argc, char **argv) {
-    // LLVM 초기화
-    llvm::InitLLVM initLLVM(argc, argv);
-    
-    // 명령줄 옵션 설정
-    llvm::cl::opt<std::string> inputFilename(
-        "input",
-        llvm::cl::desc("Input MLIR file"),
-        llvm::cl::Required);
-    
-    llvm::cl::opt<std::string> outputDotFile(
-        "output-dot",
-        llvm::cl::desc("Output DOT file for graph visualization"),
-        llvm::cl::init("dataflow.dot"));
-    
-    llvm::cl::ParseCommandLineOptions(argc, argv, "MLIR TOSA Model Liveness Analyzer\n");
-    
-    // MLIR 컨텍스트 생성
-    mlir::MLIRContext context;
-    
-    // 필요한 다이얼렉트 등록
-    context.loadDialect<mlir::tosa::TosaDialect>();
-    context.loadDialect<mlir::func::FuncDialect>();
-    
-    // 소스 파일 로드
-    std::string errorMessage;
-    auto file = mlir::openInputFile(inputFilename, &errorMessage);
-    if (!file) {
-        llvm::errs() << errorMessage << "\n";
-        return 1;
-    }
-    
-    // 소스 관리자 설정
-    llvm::SourceMgr sourceMgr;
-    sourceMgr.AddNewSourceBuffer(std::move(file), llvm::SMLoc());
-    
-    // MLIR 파싱
-    mlir::OwningOpRef<mlir::Operation*> moduleRef = 
-        mlir::parseSourceFile<mlir::ModuleOp>(sourceMgr, &context);
-    if (!moduleRef) {
-        llvm::errs() << "Error parsing input file\n";
-        return 1;
-    }
-    
-    mlir::ModuleOp module = mlir::cast<mlir::ModuleOp>(moduleRef.get());
-    
-    // MLIR 모듈 내용 출력
-    llvm::outs() << "Parsed MLIR Module:\n";
-    module.dump();
-    
-    // 데이터 흐름 그래프 구성
-    llvm::outs() << "\nBuilding data flow graph...\n";
-    TensorGraph* graph = buildTensorGraph(module);
-    llvm::outs() << "Created " << graph->nodes.size() << " nodes in the data flow graph\n";
-    
-    // 그래프 시각화 (DOT 형식)
-    exportGraphToDot(graph, outputDotFile);
-    
-    // Liveness 분석 수행
+// perform liveness analysis
+void TosaAnalyzer::performLivenessAnalysis() {
     llvm::outs() << "\nPerforming liveness analysis...\n";
-    LivenessAnalysis livenessAnalysis(graph);
-    
-    // 분석 결과 출력
-    livenessAnalysis.printLivenessInfo();
-    
-    // 메모리 정리
-    delete graph;
-    
-    llvm::outs() << "\nAnalysis complete!\n";
-    
+    livenessAnalysis = new LivenessAnalysis(graph);
+}
+
+
+// print analysis results
+void TosaAnalyzer::printResults() {
+    if (livenessAnalysis)
+        livenessAnalysis -> printLivenessInfo();
+    llvm::outs() << "\nAnalysis complete.\n";
+}
+
+// excute tosa analyzer
+int TosaAnalyzer::run(int argc, char** argv) {
+    // parse command line
+    if (!parseCommandLine(argc, argv))
+        return 1;
+
+    // load inputfile
+    if (!loadAndParseInputFile())
+        return 1;
+
+    // build tensor graph
+    llvm::outs() << "\nbuild tensor graph\n";
+    graph = buildTensorGraph();
+    llvm::outs() << "Created" << graph->nodes.size() << " nodes in the dataflow graph\n";
+
+    // Export graph visualization
+    exportGraphToDot(outputFileName);
+
+    // Perform liveness analysis
+    performLivenessAnalysis();
+
+    // print results
+    printResults();
+
     return 0;
+}
+
+
+int main(int argc, char **argv) {
+    TosaAnalyzer analyzer;
+    return analyzer.run(argc, argv);
 }

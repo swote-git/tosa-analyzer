@@ -1,5 +1,5 @@
 #include "TensorNode.h"
-#include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/Dialect.h"
 #include "llvm/Support/raw_ostream.h"
 
 TensorNode::TensorNode(mlir::Operation* op) : operation(op) {
