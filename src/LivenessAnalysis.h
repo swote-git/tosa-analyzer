@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LIVENESS_ANALYSIS_H
+#define LIVENESS_ANALYSIS_H
+
 #include "TensorGraph.h"
 #include "TensorNode.h"
 #include "llvm/ADT/DenseMap.h"
@@ -44,3 +46,5 @@ public:
     // print liveness info
     void printLivenessInfo();
 };
+
+#endif

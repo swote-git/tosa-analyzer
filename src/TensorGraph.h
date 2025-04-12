@@ -1,7 +1,7 @@
-#pragma once
+#ifndef TENSOR_GRAPH_H
+#define TENSOR_GRAPH_H
 #include "TensorNode.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
 
 // 전체 데이터 흐름 그래프
 class TensorGraph {
@@ -19,3 +19,4 @@ public:
     llvm::DenseMap<mlir::Value, std::vector<TensorNode*>> userNodes;
 };
     
+#endif

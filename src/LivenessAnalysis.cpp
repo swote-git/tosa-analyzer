@@ -1,4 +1,4 @@
-#include "LivenessAnlysis.h"
+#include "LivenessAnalysis.h"
 
 LivenessAnalysis::LivenessAnalysis(TensorGraph *graph) {
     // 1. Topologically sort the graph nodes
