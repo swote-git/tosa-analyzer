@@ -11,7 +11,7 @@
 #include "TensorNode.h"
 
 // constructor
-TosaAnalyzer::TosaAnalyzer() : graph(nullptr), livenessAnalysis(nullptr) {
+TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr) {
     // register dialect
     context.loadDialect<mlir::tosa::TosaDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
@@ -21,8 +21,8 @@ TosaAnalyzer::TosaAnalyzer() : graph(nullptr), livenessAnalysis(nullptr) {
 TosaAnalyzer::~TosaAnalyzer() {
     if (graph)
         delete graph;
-    if (livenessAnalysis) 
-        delete livenessAnalysis;
+    if (liveness) 
+        delete liveness;
 }
 
 // parse input from command line
@@ -155,14 +155,14 @@ void TosaAnalyzer::exportGraphToDot(const std::string& filename) {
 // perform liveness analysis
 void TosaAnalyzer::performLivenessAnalysis() {
     llvm::outs() << "\nPerforming liveness analysis...\n";
-    livenessAnalysis = new LivenessAnalysis(graph);
+    liveness = new LivenessAnalysis(graph);
 }
 
 
 // print analysis results
 void TosaAnalyzer::printResults() {
-    if (livenessAnalysis)
-        livenessAnalysis -> printLivenessInfo();
+    if (liveness)
+        liveness -> printLivenessInfo();
     llvm::outs() << "\nAnalysis complete.\n";
 }
 
