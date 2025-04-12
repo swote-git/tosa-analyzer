@@ -5,10 +5,10 @@
 #include "TensorGraph.h"
 #include "TensorNode.h"
 #include "mlir/IR/Value.h"
-#include "llvm/ADT/DenseMap.h"
+#include <cstddef>
 
 
-class MemmoryPlanner {
+class MemoryPlanner {
 public:
     // memory Allocation record
     struct AllocationInfo {
@@ -27,21 +27,41 @@ private:
 
     // Memory allocation plan
     std::vector<AllocationInfo> allocations;
-public:
 
-    MemmoryPlanner(TensorGraph* tensorgraph, LivenessAnalysis* livness);
-    ~MemmoryPlanner();
+    struct MemoryPool {
+        size_t size;
+        std::string name;
+        std::vector<std::pair<int, int>> freeIntervals; // (start, end) offsets
+    };
+    std::vector<MemoryPool> memoryPools;
+
+    size_t totalMemory;
+    size_t peakMemory;
+    std::vector<size_t> memoryUsageTimeline;
+    
+    size_t estimateTensorSize(mlir::Value tensor);
+    int findMemoryPool(AllocationInfo& alloc);
+    void insertIntoMemoryPool(int poolIndex, AllocationInfo& alloc);
+    void buildMemoryUsageTimeline();
+
+    int createNewMemoryPool(size_t initialSize);
+    void compactMemoryPools();
+public:
+    MemoryPlanner(TensorGraph* graph, LivenessAnalysis* liveness);
+    ~MemoryPlanner();
 
     // memory planning
-    void computeTensorSize();
+    void computeTensorSizes();
     void buildAllocationPlan();
     void memoryOptimizer();
     void generateAllocationCode(const std::string&);
 
     // analysis and visualization results. 
     void printMemoryStatistics();
-    void visualizationMemoryUsage();
-    size_t getTotalMemoryUsage();
-    size_t getPeakMemoryUsage();
+    void visualizeMemoryUsage(const std::string& filename);
+    size_t getTotalMemoryUsage() const;
+    size_t getPeakMemoryUsage() const;
 };
+
+
 #endif // MEMORY_PLANNER_H
