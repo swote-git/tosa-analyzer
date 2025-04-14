@@ -19,4 +19,4 @@ public:
     llvm::DenseMap<mlir::Value, std::vector<TensorNode*>> userNodes;
 };
     
-#endif
+#endif // TENSOR_GRAPH_H

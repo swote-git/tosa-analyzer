@@ -40,12 +40,14 @@ private:
     std::vector<size_t> memoryUsageTimeline;
     
     size_t estimateTensorSize(mlir::Value tensor);
+    int getNodeIndex(TensorNode* node);
     int findMemoryPool(AllocationInfo& alloc);
     void insertIntoMemoryPool(int poolIndex, AllocationInfo& alloc);
     void buildMemoryUsageTimeline();
 
     int createNewMemoryPool(size_t initialSize);
     void compactMemoryPools();
+    
 public:
     MemoryPlanner(TensorGraph* graph, LivenessAnalysis* liveness);
     ~MemoryPlanner();
@@ -53,8 +55,8 @@ public:
     // memory planning
     void computeTensorSizes();
     void buildAllocationPlan();
-    void memoryOptimizer();
-    void generateAllocationCode(const std::string&);
+    void performMemoryOptimizer();
+    void generateAllocationCode(const std::string& filename);
 
     // analysis and visualization results. 
     void printMemoryStatistics();

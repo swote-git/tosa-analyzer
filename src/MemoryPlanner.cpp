@@ -264,7 +264,7 @@ void MemoryPlanner::buildMemoryUsageTimeline() {
     }
 }
 
-void MemoryPlanner::memoryOptimizer() {
+void MemoryPlanner::performMemoryOptimizer() {
     llvm::outs() << "Optimizing memory reuse...\n";
     // TODO: add optimizing algorithm
     compactMemoryPools();

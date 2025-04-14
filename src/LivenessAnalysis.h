@@ -47,4 +47,4 @@ public:
     void printLivenessInfo();
 };
 
-#endif
+#endif //LIVENESS_ANALYSIS_H

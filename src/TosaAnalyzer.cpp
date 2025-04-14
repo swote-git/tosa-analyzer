@@ -11,7 +11,7 @@
 #include "TensorNode.h"
 
 // constructor
-TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr) {
+TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr), memoryPlanner(nullptr) {
     // register dialect
     context.loadDialect<mlir::tosa::TosaDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
@@ -19,10 +19,12 @@ TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr) {
 
 // Destructor
 TosaAnalyzer::~TosaAnalyzer() {
-    if (graph)
-        delete graph;
+    if (memoryPlanner)
+        delete memoryPlanner;
     if (liveness) 
         delete liveness;
+    if (graph)
+        delete graph;
 }
 
 // parse input from command line
@@ -36,16 +38,28 @@ bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
         llvm::cl::desc("Input MLIR file"),
         llvm::cl::Required);
     
-    llvm::cl::opt<std::string> output(
-        "output-dot",
+    llvm::cl::opt<std::string> livenessVisualOutput(
+        "liveness-visulize-dot",
         llvm::cl::desc("Output DOT file for graph visualization"),
         llvm::cl::init("tensorGrpah.dot"));
+
+    llvm::cl::opt<std::string> memoryPlanOutput(
+        "memory-plan",
+        llvm::cl::desc("Output file for memory allocation plan"),
+        llvm::cl::init("memory_plan.h"));
+        
+    llvm::cl::opt<std::string> memoryVisualOutput(
+        "memory-vis",
+        llvm::cl::desc("Output file for memory usage visualization"),
+        llvm::cl::init("memory_vis.html"));
     
     llvm::cl::ParseCommandLineOptions(argc, argv, "MLIR TOSA Model Liveness Analyzer\n");
 
     // store file values
     inputFileName = input;
-    outputFileName = output;
+    livenessVisualFile = livenessVisualOutput;
+    memoryPlanFile = memoryPlanOutput;
+    memoryVisualFile = memoryVisualOutput;
 
     return true;
 }
@@ -158,11 +172,43 @@ void TosaAnalyzer::performLivenessAnalysis() {
     liveness = new LivenessAnalysis(graph);
 }
 
+void TosaAnalyzer::planMemoryAllocation() {
+    if (!liveness) {
+        llvm::errs() << "Error: Liveness analysis must be performed before memory planning\n";
+        return;
+    }
+    
+    llvm::outs() << "\nPlanning memory allocation...\n";
+    
+    // Create memory planner
+    memoryPlanner = new MemoryPlanner(graph, liveness);
+    
+    // Compute tensor sizes
+    memoryPlanner->computeTensorSizes();
+    
+    // Build allocation plan
+    memoryPlanner->buildAllocationPlan();
+    
+    // Optimize memory reuse
+    memoryPlanner->performMemoryOptimizer();
+    
+    // Generate allocation code
+    memoryPlanner->generateAllocationCode(memoryPlanFile);
+    
+    // Generate memory visualization
+    memoryPlanner->visualizeMemoryUsage(memoryVisualFile);
+    
+    llvm::outs() << "Memory planning complete!\n";
+}
 
 // print analysis results
 void TosaAnalyzer::printResults() {
     if (liveness)
-        liveness -> printLivenessInfo();
+        liveness->printLivenessInfo();
+
+    if (memoryPlanner)
+        memoryPlanner->printMemoryStatistics();
+
     llvm::outs() << "\nAnalysis complete.\n";
 }
 
@@ -182,11 +228,14 @@ int TosaAnalyzer::run(int argc, char** argv) {
     llvm::outs() << "Created" << graph->nodes.size() << " nodes in the dataflow graph\n";
 
     // Export graph visualization
-    exportGraphToDot(outputFileName);
+    exportGraphToDot(livenessVisualFile);
 
     // Perform liveness analysis
     performLivenessAnalysis();
 
+    // Plan memory allocation
+    planMemoryAllocation();
+    
     // print results
     printResults();
 
