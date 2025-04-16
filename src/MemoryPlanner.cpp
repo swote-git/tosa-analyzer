@@ -266,11 +266,278 @@ void MemoryPlanner::buildMemoryUsageTimeline() {
 }
 
 void MemoryPlanner::performMemoryOptimizer() {
-    llvm::outs() << "Optimizing memory reuse...\n";
-    // TODO: add optimizing algorithm
+    llvm::outs() << "\nOptimizing memory reuse using heavy-light decomposition...\n";
+    
+    // Reset memory pools for a fresh optimization
+    memoryPools.clear();
+    
+    // Create initial pool for inputs and outputs
+    createNewMemoryPool(1024 * 1024); // 1MB initial pool
+    
+    // Step 1: Classify tensors as "heavy" or "light"
+    const float HEAVY_THRESHOLD = 0.1; // Tensors using >10% of total memory are "heavy"
+    size_t sizeThreshold = totalMemory * HEAVY_THRESHOLD;
+    
+    std::vector<AllocationInfo*> heavyTensors;
+    std::vector<AllocationInfo*> lightTensors;
+    
+    for (auto& alloc : allocations) {
+        // Model inputs and outputs should be handled separately
+        if (alloc.isModelInput || alloc.isModelOutput) {
+            // Fixed allocation in pool 0
+            alloc.allocatedPoolIndex = 0;
+            alloc.offset = 0; // For simplicity, we're placing them at offset 0
+            continue;
+        }
+        
+        // Reset allocation info for re-optimization
+        alloc.allocatedPoolIndex = -1;
+        alloc.offset = -1;
+        
+        // Classify as heavy or light
+        if (alloc.size >= sizeThreshold) {
+            heavyTensors.push_back(&alloc);
+        } else {
+            lightTensors.push_back(&alloc);
+        }
+    }
+    
+    llvm::outs() << "  Classification: " << heavyTensors.size() << " heavy tensors, " 
+                 << lightTensors.size() << " light tensors\n";
+    
+    // Step 2: Sort heavy tensors by size (largest first)
+    std::sort(heavyTensors.begin(), heavyTensors.end(), 
+        [](const AllocationInfo* a, const AllocationInfo* b) {
+            return a->size > b->size;
+        });
+    
+    // Step 3: Sort light tensors by lifetime (earliest definition first)
+    std::sort(lightTensors.begin(), lightTensors.end(), 
+        [this](const AllocationInfo* a, const AllocationInfo* b) {
+            if (!a->defNode || !b->defNode) {
+                return a->defNode == nullptr; // Null nodes come first
+            }
+            
+            int aIdx = -1, bIdx = -1;
+            for (size_t i = 0; i < liveness->topoSortedNodes.size(); i++) {
+                if (liveness->topoSortedNodes[i] == a->defNode) aIdx = i;
+                if (liveness->topoSortedNodes[i] == b->defNode) bIdx = i;
+            }
+            return aIdx < bIdx;
+        });
+    
+    // Step 4: Allocate heavy tensors first (each in its own dedicated pool)
+    for (auto heavyAlloc : heavyTensors) {
+        int poolIdx = createNewMemoryPool(heavyAlloc->size + 1024); // Add a small buffer
+        heavyAlloc->allocatedPoolIndex = poolIdx;
+        heavyAlloc->offset = 0;
+        
+        // Mark the space as used
+        auto& pool = memoryPools[poolIdx];
+        pool.freeIntervals.clear(); // No free space in this dedicated pool
+        
+        llvm::outs() << "  Allocated heavy tensor (" << (heavyAlloc->size / 1024.0) 
+                     << " KB) to dedicated pool " << poolIdx << "\n";
+    }
+    
+    // Step 5: Create a shared pool for light tensors
+    int lightPoolIdx = createNewMemoryPool(totalMemory / 2); // Start with half of total memory
+    
+    // Step 6: Allocate light tensors using the best-fit algorithm
+    for (auto lightAlloc : lightTensors) {
+        bool allocated = false;
+        
+        // First, try to find a spot in an existing pool 
+        // (both fit size and no lifetime conflict)
+        for (size_t poolIdx = 1; poolIdx < memoryPools.size(); poolIdx++) {
+            auto& pool = memoryPools[poolIdx];
+            
+            // Skip dedicated heavy tensor pools (they have no free intervals)
+            if (pool.freeIntervals.empty()) continue;
+            
+            // Check each free interval in this pool
+            for (auto intervalIt = pool.freeIntervals.begin(); 
+                 intervalIt != pool.freeIntervals.end(); ++intervalIt) {
+                
+                size_t intervalSize = intervalIt->second - intervalIt->first;
+                
+                // If interval is large enough
+                if (intervalSize >= lightAlloc->size) {
+                    // Check for lifetime conflicts with all tensors in this pool
+                    bool hasConflict = false;
+                    
+                    // Get definition and last use indices for this tensor
+                    int defIdx = getNodeIndex(lightAlloc->defNode);
+                    int lastUseIdx = getNodeIndex(lightAlloc->lastUseNode);
+                    
+                    // Check against all allocated tensors in this pool
+                    for (const auto& otherAlloc : allocations) {
+                        if (otherAlloc.allocatedPoolIndex != poolIdx || 
+                            &otherAlloc == lightAlloc) {
+                            continue;
+                        }
+                        
+                        int otherDefIdx = getNodeIndex(otherAlloc.defNode);
+                        int otherLastUseIdx = getNodeIndex(otherAlloc.lastUseNode);
+                        
+                        // Check for overlap in lifetimes
+                        if (!(lastUseIdx < otherDefIdx || otherLastUseIdx < defIdx)) {
+                            hasConflict = true;
+                            break;
+                        }
+                    }
+                    
+                    // If no conflicts, allocate here
+                    if (!hasConflict) {
+                        lightAlloc->allocatedPoolIndex = poolIdx;
+                        lightAlloc->offset = intervalIt->first;
+                        
+                        // Update free intervals
+                        int newStart = intervalIt->first + lightAlloc->size;
+                        int oldEnd = intervalIt->second;
+                        
+                        // Remove this interval
+                        intervalIt = pool.freeIntervals.erase(intervalIt);
+                        
+                        // If there's still free space after this allocation, add a new interval
+                        if (newStart < oldEnd) {
+                            pool.freeIntervals.push_back(std::make_pair(newStart, oldEnd));
+                            
+                            // Sort free intervals by start offset
+                            std::sort(pool.freeIntervals.begin(), pool.freeIntervals.end(),
+                                [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+                                    return a.first < b.first;
+                                });
+                        }
+                        
+                        allocated = true;
+                        break;
+                    }
+                }
+            }
+            
+            if (allocated) break;
+        }
+        
+        // If we couldn't fit it in any existing pool, use the light tensor pool
+        if (!allocated) {
+            auto& lightPool = memoryPools[lightPoolIdx];
+            
+            // Find a free interval that's large enough
+            bool foundInterval = false;
+            for (auto intervalIt = lightPool.freeIntervals.begin(); 
+                 intervalIt != lightPool.freeIntervals.end(); ++intervalIt) {
+                
+                size_t intervalSize = intervalIt->second - intervalIt->first;
+                
+                if (intervalSize >= lightAlloc->size) {
+                    lightAlloc->allocatedPoolIndex = lightPoolIdx;
+                    lightAlloc->offset = intervalIt->first;
+                    
+                    // Update free intervals
+                    int newStart = intervalIt->first + lightAlloc->size;
+                    int oldEnd = intervalIt->second;
+                    
+                    // Remove this interval
+                    intervalIt = lightPool.freeIntervals.erase(intervalIt);
+                    
+                    // If there's still free space after this allocation, add a new interval
+                    if (newStart < oldEnd) {
+                        lightPool.freeIntervals.push_back(std::make_pair(newStart, oldEnd));
+                        
+                        // Sort free intervals by start offset
+                        std::sort(lightPool.freeIntervals.begin(), lightPool.freeIntervals.end(),
+                            [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+                                return a.first < b.first;
+                            });
+                    }
+                    
+                    foundInterval = true;
+                    allocated = true;
+                    break;
+                }
+            }
+            
+            // If no suitable interval found, expand the light pool
+            if (!foundInterval) {
+                // Calculate expansion size (at least tensor size, but add some buffer)
+                size_t expansionSize = std::max(lightAlloc->size * 2, (size_t)1024 * 64);
+                
+                // Get current pool size
+                size_t oldSize = lightPool.size;
+                
+                // Expand the pool
+                lightPool.size += expansionSize;
+                
+                // Add the expansion as a new free interval
+                lightPool.freeIntervals.push_back(std::make_pair(oldSize, lightPool.size));
+                
+                // Now allocate the tensor at the start of the new interval
+                lightAlloc->allocatedPoolIndex = lightPoolIdx;
+                lightAlloc->offset = oldSize;
+                
+                // Update the new interval
+                int newStart = oldSize + lightAlloc->size;
+                
+                // Remove last interval we just added
+                lightPool.freeIntervals.pop_back();
+                
+                // Add the remaining free space if any
+                if (newStart < lightPool.size) {
+                    lightPool.freeIntervals.push_back(std::make_pair(newStart, lightPool.size));
+                }
+                
+                allocated = true;
+                
+                llvm::outs() << "  Expanded light tensor pool by " << (expansionSize / 1024.0) 
+                             << " KB to fit tensor of size " << (lightAlloc->size / 1024.0) 
+                             << " KB\n";
+            }
+        }
+        
+        if (!allocated) {
+            llvm::errs() << "  Error: Failed to allocate tensor of size " 
+                         << (lightAlloc->size / 1024.0) << " KB\n";
+        }
+    }
+    
+    // Step 7: Merge adjacent free intervals in all pools
     compactMemoryPools();
     
+    // Step 8: Build memory usage timeline
+    buildMemoryUsageTimeline();
+    
+    // Calculate peak memory usage
+    peakMemory = *std::max_element(memoryUsageTimeline.begin(), memoryUsageTimeline.end());
+    
+    // Memory efficiency metrics
+    float naiveEfficiency = ((float)totalMemory / peakMemory) * 100.0f;
+    
+    // Calculate total pool size
+    size_t totalPoolSize = 0;
+    for (const auto& pool : memoryPools) {
+        totalPoolSize += pool.size;
+    }
+    
+    float poolEfficiency = ((float)totalMemory / totalPoolSize) * 100.0f;
+    
     llvm::outs() << "Memory optimization complete.\n";
+    llvm::outs() << "  Total memory: " << (totalMemory / 1024.0) << " KB\n";
+    llvm::outs() << "  Peak memory usage: " << (peakMemory / 1024.0) << " KB\n";
+    llvm::outs() << "  Total pool size: " << (totalPoolSize / 1024.0) << " KB\n";
+    llvm::outs() << "  Temporal efficiency: " << naiveEfficiency << "%\n";
+    llvm::outs() << "  Spatial efficiency: " << poolEfficiency << "%\n";
+}
+
+// Helper method to get node index in topological order
+int MemoryPlanner::getNodeIndex(TensorNode* node) {
+    if (!node) return liveness->topoSortedNodes.size(); // Default to end of execution
+    
+    for (size_t i = 0; i < liveness->topoSortedNodes.size(); i++) {
+        if (liveness->topoSortedNodes[i] == node) return i;
+    }
+    
+    return -1; // Not found (shouldn't happen)
 }
 
 void MemoryPlanner::compactMemoryPools() {
