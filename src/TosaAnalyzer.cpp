@@ -5,6 +5,7 @@
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
 #include "mlir/Dialect/Func/IR/FuncOps.h"
+#include "mlir/Dialect/Quant/IR/Quant.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/InitLLVM.h"
@@ -15,6 +16,7 @@ TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr), memoryPlanner(
     // register dialect
     context.loadDialect<mlir::tosa::TosaDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
+    context.loadDialect<mlir::quant::QuantDialect>();
 }
 
 // Destructor
@@ -33,7 +35,7 @@ bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
     llvm::InitLLVM initLLVM(argc, argv);
     
     // command line options
-    llvm::cl::opt<std::string> input(
+    llvm::cl::opt<std::string> inputFile(
         "input",
         llvm::cl::desc("Input MLIR file"),
         llvm::cl::Required);
@@ -56,7 +58,7 @@ bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
     llvm::cl::ParseCommandLineOptions(argc, argv, "MLIR TOSA Model Liveness Analyzer\n");
 
     // store file values
-    inputFileName = input;
+    inputFileName = inputFile;
     livenessVisualFile = livenessVisualOutput;
     memoryPlanFile = memoryPlanOutput;
     memoryVisualFile = memoryVisualOutput;

@@ -47,7 +47,10 @@ set(MLIR_LIBS
     MLIRParser
     MLIRPass
     MLIRSupport
-    ${CMAKE_HOME_DIRECTORY}/../llvm-project/build/lib/libMLIRTosaDialect.a 
+    MLIRTosaDialect
+    MLIRTensorDialect
+    MLIRQuantDialect
+    MLIRArithDialect
     MLIRFuncDialect
 )
 

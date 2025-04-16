@@ -2,6 +2,7 @@
 #include "mlir/IR/BuiltinTypeInterfaces.h"
 #include "mlir/IR/BuiltinTypes.h"
 #include "mlir/IR/Value.h"
+#include "mlir/Support/LLVM.h"
 #include "llvm/Support/raw_ostream.h"
 #include <algorithm>
 #include <cmath>
@@ -23,7 +24,7 @@ void MemoryPlanner::computeTensorSizes() {
         auto& range = entry.getSecond();
         
         // Skip non-tensor values
-        if (!val.getType().isa<mlir::ShapedType>())
+        if (!mlir::isa<mlir::ShapedType>(val.getType()))
             continue;
             
         // Create allocation info
@@ -62,7 +63,7 @@ void MemoryPlanner::computeTensorSizes() {
 
 size_t MemoryPlanner::estimateTensorSize(mlir::Value tensor) {
     // Get the tensor type
-    auto type = tensor.getType().dyn_cast<mlir::ShapedType>();
+    auto type =  mlir::dyn_cast<mlir::ShapedType>(tensor.getType());
     if (!type) {
         return 0; // Not a tensor
     }
@@ -84,7 +85,7 @@ size_t MemoryPlanner::estimateTensorSize(mlir::Value tensor) {
         // Integer type
         unsigned bitWidth = 32; // Default to 32-bit
         
-        if (auto intType = type.getElementType().dyn_cast<mlir::IntegerType>()) {
+        if (auto intType = mlir::dyn_cast<mlir::IntegerType>(type.getElementType())) {
             bitWidth = intType.getWidth();
         }
         
@@ -341,7 +342,7 @@ void MemoryPlanner::generateAllocationCode(const std::string& filename) {
         outFile << "#define " << tensorName << " ((";
         
         // Try to determine the appropriate C type
-        auto type = alloc.value.getType().dyn_cast<mlir::ShapedType>();
+        auto type = mlir::dyn_cast<mlir::ShapedType>(alloc.value.getType());
         if (type) {
             if (type.getElementType().isF32()) {
                 outFile << "float*";
@@ -427,7 +428,7 @@ void MemoryPlanner::printMemoryStatistics() {
                      << (alloc.size / 1024.0) << " KB";
         
         // Show tensor shape if available
-        auto type = alloc.value.getType().dyn_cast<mlir::ShapedType>();
+        auto type =  mlir::dyn_cast<mlir::ShapedType>(alloc.value.getType());
         if (type) {
             llvm::outs() << " (shape: [";
             auto shape = type.getShape();
@@ -530,7 +531,7 @@ void MemoryPlanner::visualizeMemoryUsage(const std::string& filename) {
             
             // Generate a color based on the tensor type
             std::string color = "#ACE"; // Default blue
-            auto type = alloc.value.getType().dyn_cast<mlir::ShapedType>();
+            auto type =  mlir::dyn_cast<mlir::ShapedType>(alloc.value.getType());
             if (type) {
                 if (type.getElementType().isF32()) color = "#AEC";
                 else if (type.getElementType().isInteger(8)) color = "#ECA";
