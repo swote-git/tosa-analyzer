@@ -3,20 +3,20 @@
 #include "TensorNode.h"
 #include "llvm/ADT/DenseMap.h"
 
-// 전체 데이터 흐름 그래프
+// data-flow graph
 class TensorGraph {
 public:
     TensorGraph();
-    // 소멸자: 노드 메모리 정리
     ~TensorGraph();
     
-    // 모든 노드들을 저장
+    // store all node
     std::vector<TensorNode*> nodes;
     
-    // Value를 정의하는 노드를 빠르게 찾기 위한 맵
+    // map to find nodes that define Value
     llvm::DenseMap<mlir::Value, TensorNode*> definingNodes;
-    // Value를 사용하는 노드들을 빠르게 찾기 위한 맵
+    
+    // map to find nodes that using Value
     llvm::DenseMap<mlir::Value, std::vector<TensorNode*>> userNodes;
 };
     
-#endif // TENSOR_GRAPH_H
+#endif

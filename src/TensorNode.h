@@ -9,38 +9,38 @@
 
 class TensorNode {
 public:
-    // 노드 ID (디버깅 용도)
+    // node ID (for debug)
     std::string id;
     
-    // 해당 MLIR 연산
+    // MLIR operation
     mlir::Operation* operation;
     
-    // 입력값 (이전 노드들로부터 오는 에지)
+    // input parameters values (incoimg edges)
     std::vector<mlir::Value> inputs;
     
-    // 출력값 (다음 노드들로 가는 에지)
+    // output values (outgoing edges)
     std::vector<mlir::Value> outputs;
     
-    // 연산 타입과 속성을 저장하는 추가 필드
-    std::string opName;          // 연산 이름 (예: "tosa.add")
-    std::string opTypeName;      // 다이얼렉트 이름 (예: "tosa")
+    // additional fields that store operation name and diaclect
+    std::string opName;          // operation name (ex: "tosa.add")
+    std::string opTypeName;      // dialect name (ex: "tosa")
     
-    // 연산 속성을 문자열 맵으로 저장
+    // store operation's attributes to map
     std::map<std::string, std::string> attributes;
     
-    // 생성자
+    // constructor
     TensorNode(mlir::Operation* op);
     
-    // 연산 정보 출력
+    // print operation info
     void printOpInfo() const;
     
-    // 특정 속성 값 가져오기
+    // get attribute
     std::string getAttribute(const std::string& name) const;
     
-    // 이 연산이 특정 다이얼렉트에 속하는지 확인
+    // Check if this operation belongs to a specific dialect
     bool isDialect(const std::string& dialectName) const;
     
-    // 이 연산이 특정 유형인지 확인
+    // Check if this operation is of a specific type
     bool isOpType(const std::string& opTypeName) const;
 };
 

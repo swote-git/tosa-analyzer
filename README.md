@@ -14,9 +14,10 @@ TOSA Analyzer is a static analysis tool for MLIR models with TOSA operations. It
 
 ### Prerequisites
 
+- c++17
 - CMake (3.13.4 or higher)
 - LLVM/MLIR development libraries (latest version recommended)
-- Clang compiler
+- Clang compiler (10.0.0 or higher)
 - Ninja build system (recommended)
 
 ### Building from Source
