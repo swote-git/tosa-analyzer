@@ -1,5 +1,5 @@
 // src/optimizer/adapters/LivenessAnalysisAdapter.cpp
-#include "LivenessAnalysisAdapter.h"
+#include "optimizer/adapters/LivenessAnalysisAdapter.h"
 #include "mlir/IR/BuiltinTypes.h"
 
 namespace optimizer {

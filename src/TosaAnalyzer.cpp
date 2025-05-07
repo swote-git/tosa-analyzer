@@ -1,6 +1,7 @@
 #include "TosaAnalyzer.h"
 #include "LivenessAnalysis.h"
 #include "llvm/Support/raw_ostream.h"
+#include "MemoryPlanner.h"
 #include "mlir/Parser/Parser.h"
 #include "mlir/Support/FileUtilities.h"
 #include "mlir/Dialect/Tosa/IR/TosaOps.h"
@@ -12,7 +13,7 @@
 #include "TensorNode.h"
 
 // constructor
-TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr), memoryPlanner(nullptr) {
+TosaAnalyzer::TosaAnalyzer() : graph(nullptr), liveness(nullptr), memoryPlanner(nullptr), memoryOptimizerStrategy("") {
     // register dialect
     context.loadDialect<mlir::tosa::TosaDialect>();
     context.loadDialect<mlir::func::FuncDialect>();
@@ -49,7 +50,12 @@ bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
         "memory-plan",
         llvm::cl::desc("Output file for memory allocation plan"),
         llvm::cl::init("memory_plan.h"));
-        
+    // Additional option: memory optimization strategy
+    llvm::cl::opt<std::string> optimizerStrategy(
+        "memory-optimizer",
+        llvm::cl::desc("Memory optimization strategy to use"),
+        llvm::cl::init(""));
+
     llvm::cl::opt<std::string> memoryVisualOutput(
         "memory-vis",
         llvm::cl::desc("Output file for memory usage visualization"),
@@ -63,6 +69,10 @@ bool TosaAnalyzer::parseCommandLine(int argc, char **argv) {
     memoryPlanFile = memoryPlanOutput;
     memoryVisualFile = memoryVisualOutput;
 
+    if (!optimizerStrategy.empty()) {
+        memoryOptimizerStrategy = optimizerStrategy;
+    }
+    
     return true;
 }
 
@@ -174,6 +184,33 @@ void TosaAnalyzer::performLivenessAnalysis() {
     liveness = new LivenessAnalysis(graph);
 }
 
+// Method to select memory optimization strategy
+void TosaAnalyzer::selectMemoryOptimizer(const std::string& optimizerName) {
+    // Get list of available optimizers
+    auto availableOptimizers = optimizer::registry::OptimizerRegistry::getInstance().getAvailableOptimizers();
+    
+    // Check if requested optimizer exists
+    bool found = false;
+    for (const auto& name : availableOptimizers) {
+        if (name == optimizerName) {
+            found = true;
+            break;
+        }
+    }
+    
+    if (found) {
+        memoryOptimizerStrategy = optimizerName;
+        llvm::outs() << "Selected memory optimizer: " << optimizerName << "\n";
+    } else {
+        llvm::errs() << "Error: Memory optimizer '" << optimizerName << "' not found\n";
+        llvm::errs() << "Available optimizers:\n";
+        for (const auto& name : availableOptimizers) {
+            llvm::errs() << "  - " << name << "\n";
+        }
+    }
+}
+
+
 void TosaAnalyzer::planMemoryAllocation() {
     if (!liveness) {
         llvm::errs() << "Error: Liveness analysis must be performed before memory planning\n";
@@ -182,25 +219,52 @@ void TosaAnalyzer::planMemoryAllocation() {
     
     llvm::outs() << "\nPlanning memory allocation...\n";
     
-    // Create memory planner
-    memoryPlanner = new MemoryPlanner(graph, liveness);
-    
-    // Compute tensor sizes
-    memoryPlanner->computeTensorSizes();
-    
-    // Build allocation plan
-    memoryPlanner->buildAllocationPlan();
-    
-    // Optimize memory reuse
-    memoryPlanner->performMemoryOptimizer();
-    
-    // Generate allocation code
-    memoryPlanner->generateAllocationCode(memoryPlanFile);
-    
-    // Generate memory visualization
-    memoryPlanner->visualizeMemoryUsage(memoryVisualFile);
+    // If no optimization strategy is selected, use the existing memory planner
+    if (memoryOptimizerStrategy.empty()) {
+        // Use existing memory planner implementation
+        memoryPlanner = new MemoryPlanner(graph, liveness);
+        memoryPlanner->computeTensorSizes();
+        memoryPlanner->buildAllocationPlan();
+        memoryPlanner->performMemoryOptimizer();
+        memoryPlanner->generateAllocationCode(memoryPlanFile);
+        memoryPlanner->visualizeMemoryUsage(memoryVisualFile);
+    } else {
+        // Use optimizer package
+        // Convert LivenessAnalysis to TensorLifetimeInfo
+        auto tensorLifetimes = optimizer::adapters::LivenessAnalysisAdapter::convertToTensorLifetimeInfo(liveness, graph);
+        
+        // Create the selected optimizer
+        auto optimizerInstance = optimizer::registry::OptimizerRegistry::getInstance().createOptimizer(memoryOptimizerStrategy);
+        
+        if (!optimizerInstance) {
+            llvm::errs() << "Error: Failed to create optimizer '" << memoryOptimizerStrategy << "'\n";
+            return;
+        }
+        
+        // Run optimization
+        optimizer::MemoryAllocationPlan plan = optimizerInstance->optimize(tensorLifetimes);
+        
+        // Output results
+        const auto& metrics = optimizerInstance->getMetrics();
+        llvm::outs() << "Memory optimization completed with strategy: " << optimizerInstance->getName() << "\n";
+        llvm::outs() << "Total memory: " << (metrics.totalTensorMemory / 1024.0) << " KB\n";
+        llvm::outs() << "Peak memory: " << (metrics.peakMemoryUsage / 1024.0) << " KB\n";
+        llvm::outs() << "Memory efficiency: " << metrics.temporalEfficiency << "%\n";
+        
+        // Additional code for visualizeMemoryUsage and generateAllocationCode can be added here
+    }
     
     llvm::outs() << "Memory planning complete!\n";
+}
+
+// Method to list available memory optimization strategies
+void TosaAnalyzer::listAvailableMemoryOptimizers() {
+    auto availableOptimizers = optimizer::registry::OptimizerRegistry::getInstance().getAvailableOptimizers();
+    
+    llvm::outs() << "Available memory optimization strategies:\n";
+    for (const auto& name : availableOptimizers) {
+        llvm::outs() << "  - " << name << "\n";
+    }
 }
 
 // print analysis results

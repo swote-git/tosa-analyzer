@@ -6,8 +6,9 @@
 #include "TensorGraph.h"
 #include "LivenessAnalysis.h"
 #include <string>
-
-
+#include "optimizer/MemoryOptimizerInterface.h"
+#include "optimizer/registry/OptimizerRegistry.h"
+#include "optimizer/adapters/LivenessAnalysisAdapter.h"
 
 class TosaAnalyzer {
 private:
@@ -21,6 +22,8 @@ private:
     std::string livenessVisualFile;
     std::string memoryPlanFile;
     std::string memoryVisualFile;
+
+    std::string memoryOptimizerStrategy;
 public:
     TosaAnalyzer();
     ~TosaAnalyzer();
@@ -32,6 +35,8 @@ public:
     void performLivenessAnalysis();
     void planMemoryAllocation();
     void printResults();
+    void selectMemoryOptimizer(const std::string& optimizerName);
+    void listAvailableMemoryOptimizers();
     int run(int argc, char **argv);
 };
 

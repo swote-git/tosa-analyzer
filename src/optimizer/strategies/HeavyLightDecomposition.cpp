@@ -1,7 +1,9 @@
 #include "BaseMemoryOptimizer.cpp"
 #include <numeric>
+#include "optimizer/registry/OptimizerRegistry.h"
 
 namespace optimizer {
+namespace strategies {
 
 class HeavyLightDecomposition : public BaseMemoryOptimizer {
 public:
@@ -177,4 +179,13 @@ public:
     }
 };
 
+} // namespace strategies
 } // namespace optimizer
+
+namespace {
+    // This static variable ensures registration happens before main() is called
+    static bool greedy_first_fit_registered = 
+        optimizer::registry::registerOptimizer<optimizer::strategies::HeavyLightDecomposition>(
+            "heavy-light-decomposition"
+        );
+}
