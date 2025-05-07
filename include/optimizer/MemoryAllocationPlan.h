@@ -43,6 +43,13 @@ public:
         return pools.size() - 1;
     }
     
+    // Resize an existing memory pool
+    void resizePool(int poolIndex, size_t newSize) {
+        if (poolIndex >= 0 && poolIndex < pools.size()) {
+            pools[poolIndex].size = newSize;
+        }
+    }
+    
     // Allocate a tensor in a specific pool
     void allocateTensor(const TensorLifetimeInfo* tensor, int poolIndex, size_t offset) {
         allocations.emplace_back(tensor, poolIndex, offset);

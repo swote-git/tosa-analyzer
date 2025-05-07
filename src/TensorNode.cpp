@@ -3,25 +3,25 @@
 #include "llvm/Support/raw_ostream.h"
 
 TensorNode::TensorNode(mlir::Operation* op) : operation(op) {
-    // 노드 ID 생성 (예: 연산 이름 + 고유 식별자)
+    // create node id
     id = op->getName().getStringRef().str() + "_" + 
          std::to_string(reinterpret_cast<uintptr_t>(op));
     
-    // 연산 이름과 다이얼렉트 이름 저장
+    // store operation name and dialect
     opName = op->getName().getStringRef().str();
     
-    // 다이얼렉트 이름 추출 (예: "tosa.add" -> "tosa")
+    // extract dialect name (ex : "tosa.add" -> "tosa")
     if (op->getDialect()) {
         opTypeName = op->getDialect()->getNamespace().str();
     } else {
-        // 다이얼렉트가 없으면 연산 이름에서 추출 시도
+        // if no dialect, extract from operation name
         size_t dotPos = opName.find('.');
         if (dotPos != std::string::npos) {
             opTypeName = opName.substr(0, dotPos);
         }
     }
     
-    // 입력 및 출력 값 초기화
+    // initialize input/output value
     for (auto operand : op->getOperands()) {
         inputs.push_back(operand);
     }
@@ -30,12 +30,12 @@ TensorNode::TensorNode(mlir::Operation* op) : operation(op) {
         outputs.push_back(result);
     }
     
-    // 연산 속성 저장
+    // store operation attributes
     for (auto attr : op->getAttrs()) {
         std::string attrName = attr.getName().str();
         std::string attrValue;
         
-        // 속성 값을 문자열로 변환
+        // convert attributes value to string
         llvm::raw_string_ostream stream(attrValue);
         attr.getValue().print(stream);
         
@@ -63,21 +63,21 @@ void TensorNode::printOpInfo() const {
     llvm::outs() << "Operation: " << opName << "\n";
     llvm::outs() << "Dialect: " << opTypeName << "\n";
     
-    // 입력값 정보 출력
+    // print input info
     llvm::outs() << "Inputs (" << inputs.size() << "):\n";
     for (size_t i = 0; i < inputs.size(); ++i) {
         auto input = inputs[i];
         llvm::outs() << "  [" << i << "] " << input << " : " << input.getType() << "\n";
     }
     
-    // 출력값 정보 출력
+    // print output info
     llvm::outs() << "Outputs (" << outputs.size() << "):\n";
     for (size_t i = 0; i < outputs.size(); ++i) {
         auto output = outputs[i];
         llvm::outs() << "  [" << i << "] " << output << " : " << output.getType() << "\n";
     }
     
-    // 속성 정보 출력
+    // print attributes info
     llvm::outs() << "Attributes (" << attributes.size() << "):\n";
     for (const auto& attr : attributes) {
         llvm::outs() << "  " << attr.first << " = " << attr.second << "\n";
